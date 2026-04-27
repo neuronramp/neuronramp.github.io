@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinical Data Quick Read · A Privacy Screening Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Karla:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#11241D;
+  --bg-alt:#0a1814;
+  --surface:rgba(220,239,232,0.04);
+  --text:#dcefe8;
+  --text-muted:rgba(220,239,232,0.65);
+  --accent:#F0C318;
+  --warn:#E85D24;
+  --ok:#97C459;
+  --info:#7ba3d4;
+  --rule:rgba(220,239,232,0.18);
+  --serif:'Cormorant Garamond', serif;
+  --sans:'Karla', sans-serif;
+  --mono:'JetBrains Mono', monospace;
+}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+.container{
+  max-width:1200px;
+  margin:0 auto;
+  padding:2.5rem;
+}
+
+header{
+  border-bottom:0.5px solid var(--rule);
+  padding-bottom:1.75rem;
+  margin-bottom:2rem;
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:.75rem;
+  display:flex;align-items:center;gap:.6rem;
+}
+.eyebrow::before{
+  content:'';
+  width:24px;height:1px;
+  background:var(--accent);
+}
+h1{
+  font-family:var(--serif);
+  font-size:clamp(2rem, 4vw, 2.75rem);
+  font-weight:500;
+  line-height:1.1;
+  letter-spacing:-0.015em;
+  margin-bottom:.5rem;
+}
+h1 em{font-style:italic;color:var(--accent);font-weight:400}
+.tagline{
+  font-family:var(--serif);
+  font-size:1.15rem;
+  font-style:italic;
+  color:var(--text-muted);
+  max-width:60ch;
+}
+
+.disclaimer{
+  background:rgba(232,93,36,0.1);
+  border-left:3px solid var(--warn);
+  padding:1.25rem 1.5rem;
+  margin-bottom:2rem;
+  font-size:.92rem;
+  line-height:1.6;
+}
+.disclaimer strong{color:var(--warn)}
+.disclaimer .label{
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--warn);
+  display:block;
+  margin-bottom:.4rem;
+  font-weight:500;
+}
+
+.upload-area{
+  border:2px dashed var(--rule);
+  border-radius:4px;
+  padding:3rem 2rem;
+  text-align:center;
+  transition:all .2s;
+  cursor:pointer;
+  background:var(--surface);
+}
+.upload-area:hover, .upload-area.drag{
+  border-color:var(--accent);
+  background:rgba(240,195,24,0.05);
+}
+.upload-area p{font-size:1rem;color:var(--text-muted);margin:.5rem 0}
+.upload-area .big{font-family:var(--serif);font-size:1.5rem;color:var(--text);font-style:italic}
+.upload-area .formats{font-family:var(--mono);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-top:.75rem}
+input[type=file]{display:none}
+
+.file-info{
+  background:var(--surface);
+  padding:1.25rem 1.5rem;
+  border:0.5px solid var(--rule);
+  margin-bottom:1.5rem;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;
+  font-family:var(--mono);
+  font-size:.78rem;
+}
+.file-info .meta{color:var(--text-muted)}
+.file-info .meta span{color:var(--accent)}
+.btn{
+  font-family:var(--mono);
+  font-size:.76rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  padding:.7rem 1.4rem;
+  background:var(--accent);
+  color:var(--bg);
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+  transition:all .2s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--text);border:0.5px solid var(--rule)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-warn{background:var(--warn);color:white}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+.section-title{
+  font-family:var(--mono);
+  font-size:.74rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:2.5rem 0 1rem;
+  padding-bottom:.5rem;
+  border-bottom:0.5px solid var(--rule);
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+  gap:1rem;
+  margin-bottom:2rem;
+}
+.stat-card{
+  background:var(--surface);
+  border:0.5px solid var(--rule);
+  padding:1.25rem 1.25rem;
+}
+.stat-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem}
+.stat-value{font-family:var(--serif);font-size:2rem;font-weight:500;line-height:1}
+.stat-value.warn{color:var(--warn)}
+.stat-value.ok{color:var(--ok)}
+.stat-value.accent{color:var(--accent)}
+.stat-sub{font-size:.78rem;color:var(--text-muted);margin-top:.4rem}
+
+.verdict{
+  padding:1.5rem 1.75rem;
+  border-left:3px solid;
+  margin-bottom:2rem;
+  font-size:.95rem;
+  line-height:1.6;
+}
+.verdict.fail{background:rgba(232,93,36,0.08);border-left-color:var(--warn)}
+.verdict.warn{background:rgba(240,195,24,0.08);border-left-color:var(--accent)}
+.verdict.pass{background:rgba(151,196,89,0.08);border-left-color:var(--ok)}
+.verdict-label{
+  font-family:var(--mono);
+  font-size:.72rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  margin-bottom:.5rem;
+  font-weight:600;
+}
+.verdict.fail .verdict-label{color:var(--warn)}
+.verdict.warn .verdict-label{color:var(--accent)}
+.verdict.pass .verdict-label{color:var(--ok)}
+.verdict h3{font-family:var(--serif);font-size:1.4rem;font-weight:500;margin-bottom:.5rem;font-style:italic}
+
+.col-table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--surface);
+  border:0.5px solid var(--rule);
+  font-size:.88rem;
+}
+.col-table th{
+  text-align:left;
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  padding:.85rem 1rem;
+  border-bottom:0.5px solid var(--rule);
+  background:rgba(0,0,0,0.15);
+  font-weight:500;
+}
+.col-table td{
+  padding:.75rem 1rem;
+  border-bottom:0.5px solid var(--rule);
+  vertical-align:middle;
+}
+.col-table tr:last-child td{border-bottom:none}
+.col-name{font-family:var(--mono);font-weight:500;font-size:.85rem}
+.col-detect{
+  font-family:var(--mono);
+  font-size:.7rem;
+  padding:.2rem .55rem;
+  border-radius:2px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.col-detect.direct{background:rgba(232,93,36,0.2);color:#ffb08a}
+.col-detect.quasi{background:rgba(240,195,24,0.2);color:var(--accent)}
+.col-detect.text{background:rgba(123,163,212,0.2);color:#a3c5e8}
+.col-detect.ok{background:rgba(151,196,89,0.15);color:var(--ok)}
+
+.col-action select{
+  background:var(--bg-alt);
+  color:var(--text);
+  border:0.5px solid var(--rule);
+  padding:.4rem .6rem;
+  font-family:var(--mono);
+  font-size:.75rem;
+  cursor:pointer;
+  border-radius:2px;
+  width:100%;
+}
+.col-action select:focus{outline:none;border-color:var(--accent)}
+
+.col-sample{
+  font-family:var(--mono);
+  font-size:.78rem;
+  color:var(--text-muted);
+  font-style:italic;
+  max-width:280px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.precautions{
+  background:var(--surface);
+  border:0.5px solid var(--rule);
+  padding:1.5rem 1.75rem;
+  margin:2rem 0;
+}
+.precautions h3{
+  font-family:var(--serif);
+  font-size:1.3rem;
+  font-style:italic;
+  font-weight:500;
+  color:var(--accent);
+  margin-bottom:1rem;
+}
+.precautions ul{list-style:none;margin:0;padding:0}
+.precautions li{
+  padding:.6rem 0;
+  padding-left:1.5rem;
+  position:relative;
+  font-size:.92rem;
+  line-height:1.55;
+  border-bottom:0.5px dashed var(--rule);
+}
+.precautions li:last-child{border-bottom:none}
+.precautions li::before{
+  content:'§';
+  position:absolute;
+  left:0;
+  color:var(--accent);
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:600;
+}
+
+.actions{
+  display:flex;
+  gap:1rem;
+  margin:2rem 0;
+  flex-wrap:wrap;
+}
+
+.hidden{display:none}
+
+footer{
+  text-align:center;
+  padding:3rem 0 1rem;
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  margin-top:3rem;
+  border-top:0.5px solid var(--rule);
+}
+.privacy-note{
+  background:rgba(151,196,89,0.08);
+  border-left:3px solid var(--ok);
+  padding:.85rem 1.25rem;
+  margin-bottom:2rem;
+  font-size:.85rem;
+  font-family:var(--mono);
+  letter-spacing:.05em;
+}
+.privacy-note strong{color:var(--ok)}
+
+@media(max-width:700px){
+  .container{padding:1.25rem}
+  .col-table{font-size:.8rem}
+  .col-table th,.col-table td{padding:.55rem .6rem}
+  .col-sample{max-width:140px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Privacy Screening · For Clinical Datasets</div>
+  <h1>Clinical Data <em>Quick Read</em></h1>
+  <p class="tagline">Before you dump clinical data into an LLM, find out what is actually in there.</p>
+</header>
+
+<div class="disclaimer">
+  <span class="label">Important · Read This First</span>
+  <strong>This tool is a screening aid. It is not a substitute for HIPAA Expert Determination, IRB review, or formal de-identification by a qualified privacy officer.</strong> It performs pattern-based detection of direct identifiers, quasi-identifiers, and free-text PHI. It will catch common cases. It can miss edge cases. Use the output as a first pass, not the last word. The sanitized file should still be reviewed before any use.
+</div>
+
+<div class="privacy-note">
+  <strong>Your data does not leave your browser.</strong> All processing happens client-side. No upload, no server, no logs. Close the tab and the data is gone.
+</div>
+
+<div class="upload-area" id="uploadArea">
+  <p class="big">Drop a file here or click to choose</p>
+  <p>CSV, Excel (.xlsx, .xls), JSON, or plain text</p>
+  <p class="formats">All processing local · Nothing leaves your browser</p>
+  <input type="file" id="fileInput" accept=".csv,.tsv,.xlsx,.xls,.json,.txt">
+</div>
+
+<div id="results" class="hidden">
+
+  <div class="file-info">
+    <div class="meta">File · <span id="fileName"></span></div>
+    <div class="meta">Rows · <span id="rowCount"></span></div>
+    <div class="meta">Columns · <span id="colCount"></span></div>
+    <button class="btn btn-secondary" onclick="reset()">Load different file</button>
+  </div>
+
+  <div id="verdict"></div>
+
+  <div class="section-title">Detection Summary</div>
+  <div class="summary-grid" id="summaryGrid"></div>
+
+  <div class="section-title">Per-Column Findings & Sanitization</div>
+  <table class="col-table">
+    <thead>
+      <tr>
+        <th style="width:24%">Column</th>
+        <th style="width:18%">Detection</th>
+        <th style="width:30%">Sample value</th>
+        <th style="width:28%">Action on export</th>
+      </tr>
+    </thead>
+    <tbody id="colTableBody"></tbody>
+  </table>
+
+  <div class="section-title">Free-Text Scan Findings</div>
+  <div id="textFindings"></div>
+
+  <div class="precautions">
+    <h3>Use precautions for the sanitized output</h3>
+    <ul>
+      <li>This sanitized file is suitable for general analytical exploration where the structural shape of the data matters more than individual records. It is not authorization for any specific downstream use.</li>
+      <li>Do not share the sanitized file outside your organization without explicit IRB or DUA authorization. Sanitization removes flagged identifiers; it does not establish a legal de-identification standard.</li>
+      <li>Do not paste this data into an LLM unless your organization has a Business Associate Agreement with the model provider, or you have confirmed the data falls outside HIPAA scope after this screening.</li>
+      <li>Re-identification risk increases with the number of quasi-identifiers retained. If exact dates, geographic detail, or rare conditions remain in the file, consider further generalization before any external sharing.</li>
+      <li>If your dataset is genuinely small (under 500 records) and contains rare conditions, even sanitized data can pose re-identification risk through linkage attacks. Treat with extra caution.</li>
+      <li>Keep the original source file under access controls appropriate for PHI until the sanitized output has been reviewed by someone with formal privacy training.</li>
+    </ul>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="exportBtn">Download sanitized file</button>
+    <button class="btn btn-secondary" id="reportBtn">Download screening report</button>
+  </div>
+
+</div>
+
+<footer>
+  <div style="max-width:900px;margin:0 auto;text-align:center;line-height:1.8">This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). You are free to share and adapt this material for non-commercial purposes, provided you give appropriate credit to Sharena Rice, indicate if changes were made, and distribute your contributions under the same license.<br>Full license terms: <a href="https://creativecommons.org/licenses/by-nc-sa/4.0" target="_blank" style="color:var(--accent);text-decoration:none">creativecommons.org/licenses/by-nc-sa/4.0</a><br>&copy; 2026 Sharena Rice. All rights reserved under the above license.</div>
+</footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+
+// ============ Pattern Library ============
+
+const PATTERNS = {
+  // Direct identifiers (HIPAA Safe Harbor)
+  ssn: { regex: /\b\d{3}-?\d{2}-?\d{4}\b/, label: 'SSN', kind: 'direct' },
+  phone: { regex: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/, label: 'Phone', kind: 'direct' },
+  email: { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, label: 'Email', kind: 'direct' },
+  mrn: { regex: /\b(MRN|MR#?|Medical Record)[\s:#-]*\d{4,}\b/i, label: 'MRN', kind: 'direct' },
+  url: { regex: /\bhttps?:\/\/[^\s,]+/, label: 'URL', kind: 'direct' },
+  ipv4: { regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b/, label: 'IP address', kind: 'direct' },
+  zip5: { regex: /\b\d{5}(-\d{4})?\b/, label: 'ZIP code', kind: 'quasi' },
+  dateMDY: { regex: /\b(0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])[\/\-](19|20)?\d{2}\b/, label: 'Date (M/D/Y)', kind: 'quasi' },
+  dateYMD: { regex: /\b(19|20)\d{2}[\/\-](0?[1-9]|1[0-2])[\/\-](0?[1-9]|[12]\d|3[01])\b/, label: 'Date (Y/M/D)', kind: 'quasi' },
+  dob: { regex: /(DOB|date.of.birth|birth.?date)/i, label: 'DOB header', kind: 'direct' },
+  age90: { regex: /\b9[0-9]\b/, label: 'Age >89', kind: 'quasi', context: 'age' },
+};
+
+// Column name heuristics
+const COL_NAME_HINTS = {
+  direct: [
+    /name/i, /^first$|^last$|^full.?name/i, /patient.id/i, /subject.id/i,
+    /mrn/i, /medical.?record/i, /ssn|social.?security/i, /^email/i, /e.?mail/i,
+    /phone|tel|mobile/i, /address|street/i, /^city$/i, /^state$/i,
+    /zip|postal/i, /dob|birth/i, /signature/i, /license/i, /vehicle/i,
+    /url|website/i, /ip.address/i, /fax/i, /account.?(number|num|#)/i,
+    /device.?id|serial/i, /face|photo|image/i, /finger.?print|biometric/i,
+    /next.of.kin|emergency.contact|guardian/i,
+  ],
+  quasi: [
+    /^age$|patient.age/i, /^sex$|^gender$/i, /^race$|^ethnic/i,
+    /diagnosis|icd|condition/i, /^city$/i, /county/i,
+    /admission|discharge|enrollment.date|visit.date|date.of/i,
+    /^year$/i,
+  ],
+};
+
+// ============ State ============
+
+let DATA = null;       // { columns: [...], rows: [[...]], rawText: string|null, sourceFormat: 'csv'|'xlsx'|'json'|'txt' }
+let DETECT = null;     // { columns: [...], textFindings: [...], summary: {...} }
+let ACTIONS = {};      // colName -> 'keep' | 'strip' | 'pseudo' | 'generalize' | 'shift'
+let FILENAME = '';
+
+// ============ File Loading ============
+
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if(e.target.files.length) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file){
+  FILENAME = file.name;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    try {
+      if(ext === 'csv' || ext === 'tsv' || ext === 'txt'){
+        const text = e.target.result;
+        if(ext === 'txt'){
+          // Treat as freeform text
+          DATA = { columns: ['text'], rows: [[text]], rawText: text, sourceFormat: 'txt' };
+        } else {
+          parseCSV(text, ext === 'tsv' ? '\t' : ',');
+        }
+      } else if(ext === 'json'){
+        parseJSON(e.target.result);
+      } else if(ext === 'xlsx' || ext === 'xls'){
+        const arr = new Uint8Array(e.target.result);
+        const wb = XLSX.read(arr, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+        if(json.length){
+          const cols = json[0].map(c => String(c ?? ''));
+          const rows = json.slice(1).map(r => cols.map((_, i) => r[i] ?? ''));
+          DATA = { columns: cols, rows, rawText: null, sourceFormat: 'xlsx' };
+        }
+      }
+      if(DATA) runDetection();
+    } catch(err) {
+      alert('Could not parse file: ' + err.message);
+    }
+  };
+
+  if(ext === 'xlsx' || ext === 'xls') reader.readAsArrayBuffer(file);
+  else reader.readAsText(file);
+}
+
+function parseCSV(text, delim){
+  // Simple CSV parser handling quoted fields
+  const rows = [];
+  let cur = [], field = '', inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"' && text[i+1] === '"'){ field += '"'; i++; }
+      else if(c === '"') inQuotes = false;
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === delim){ cur.push(field); field = ''; }
+      else if(c === '\n'){ cur.push(field); rows.push(cur); cur = []; field = ''; }
+      else if(c === '\r') {} // skip
+      else field += c;
+    }
+  }
+  if(field || cur.length){ cur.push(field); rows.push(cur); }
+  if(!rows.length) return;
+  const cols = rows[0];
+  const data = rows.slice(1).filter(r => r.some(v => v !== ''));
+  DATA = { columns: cols, rows: data, rawText: text, sourceFormat: 'csv' };
+}
+
+function parseJSON(text){
+  const obj = JSON.parse(text);
+  if(Array.isArray(obj) && obj.length && typeof obj[0] === 'object'){
+    const cols = Array.from(new Set(obj.flatMap(o => Object.keys(o))));
+    const rows = obj.map(o => cols.map(c => {
+      const v = o[c];
+      if(v === null || v === undefined) return '';
+      if(typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    }));
+    DATA = { columns: cols, rows, rawText: text, sourceFormat: 'json' };
+  } else {
+    DATA = { columns: ['value'], rows: [[text]], rawText: text, sourceFormat: 'json' };
+  }
+}
+
+// ============ Detection ============
+
+function runDetection(){
+  const colDetect = DATA.columns.map((col, idx) => detectColumn(col, idx));
+  const textFindings = scanFreeText(colDetect);
+
+  const summary = {
+    totalCols: DATA.columns.length,
+    directCols: colDetect.filter(c => c.kind === 'direct').length,
+    quasiCols: colDetect.filter(c => c.kind === 'quasi').length,
+    textCols: colDetect.filter(c => c.kind === 'text').length,
+    cleanCols: colDetect.filter(c => c.kind === 'ok').length,
+    totalRows: DATA.rows.length,
+    textHits: textFindings.reduce((s, f) => s + f.count, 0),
+  };
+
+  // Default actions
+  ACTIONS = {};
+  colDetect.forEach(c => {
+    if(c.kind === 'direct') ACTIONS[c.col] = 'strip';
+    else if(c.kind === 'quasi'){
+      if(/age/i.test(c.col)) ACTIONS[c.col] = 'generalize';
+      else if(/date|admission|discharge|visit|enroll/i.test(c.col)) ACTIONS[c.col] = 'shift';
+      else if(/zip/i.test(c.col)) ACTIONS[c.col] = 'generalize';
+      else ACTIONS[c.col] = 'keep';
+    }
+    else if(c.kind === 'text') ACTIONS[c.col] = 'redact-text';
+    else ACTIONS[c.col] = 'keep';
+  });
+
+  DETECT = { columns: colDetect, textFindings, summary };
+  render();
+}
+
+function detectColumn(col, idx){
+  const result = { col, idx, kind: 'ok', reasons: [], sample: '' };
+
+  // Pull a sample value
+  const sampleRow = DATA.rows.find(r => r[idx] && String(r[idx]).trim() !== '');
+  if(sampleRow) result.sample = String(sampleRow[idx]).slice(0, 80);
+
+  // Header-based detection
+  for(const re of COL_NAME_HINTS.direct){
+    if(re.test(col)){
+      result.kind = 'direct';
+      result.reasons.push(`Header matches "${re.source}"`);
+      break;
+    }
+  }
+  if(result.kind === 'ok'){
+    for(const re of COL_NAME_HINTS.quasi){
+      if(re.test(col)){
+        result.kind = 'quasi';
+        result.reasons.push(`Header suggests quasi-identifier`);
+        break;
+      }
+    }
+  }
+
+  // Content-based detection (sample first 100 non-empty rows)
+  const samples = [];
+  for(const r of DATA.rows){
+    if(samples.length >= 100) break;
+    const v = r[idx];
+    if(v != null && String(v).trim() !== '') samples.push(String(v));
+  }
+  if(samples.length){
+    for(const [key, p] of Object.entries(PATTERNS)){
+      let hits = 0;
+      for(const s of samples){
+        if(p.regex.test(s)) hits++;
+      }
+      const hitRate = hits / samples.length;
+      if(hitRate > 0.3){
+        if(p.kind === 'direct' && result.kind !== 'direct'){
+          result.kind = 'direct';
+          result.reasons.push(`Content matches ${p.label} (${Math.round(hitRate*100)}% of values)`);
+        } else if(p.kind === 'quasi' && result.kind === 'ok'){
+          result.kind = 'quasi';
+          result.reasons.push(`Content matches ${p.label} (${Math.round(hitRate*100)}% of values)`);
+        }
+      } else if(hitRate > 0.05){
+        if(result.kind === 'ok'){
+          result.kind = 'quasi';
+          result.reasons.push(`Some values match ${p.label} (${Math.round(hitRate*100)}%)`);
+        }
+      }
+    }
+
+    // Detect free-text columns: long average length, low cardinality of patterns
+    const avgLen = samples.reduce((s, v) => s + v.length, 0) / samples.length;
+    if(avgLen > 60 && result.kind === 'ok'){
+      result.kind = 'text';
+      result.reasons.push('Likely free-text field (avg length > 60)');
+    }
+  }
+
+  return result;
+}
+
+function scanFreeText(colDetect){
+  const findings = [];
+  const textCols = colDetect.filter(c => c.kind === 'text');
+  for(const tc of textCols){
+    const colFindings = {};
+    for(const r of DATA.rows){
+      const text = String(r[tc.idx] || '');
+      if(!text) continue;
+      for(const [key, p] of Object.entries(PATTERNS)){
+        if(p.regex.test(text)){
+          colFindings[p.label] = (colFindings[p.label] || 0) + 1;
+        }
+      }
+    }
+    for(const [label, count] of Object.entries(colFindings)){
+      findings.push({ col: tc.col, label, count });
+    }
+  }
+  return findings;
+}
+
+// ============ Render ============
+
+function render(){
+  document.getElementById('results').classList.remove('hidden');
+  uploadArea.classList.add('hidden');
+
+  document.getElementById('fileName').textContent = FILENAME;
+  document.getElementById('rowCount').textContent = DATA.rows.length.toLocaleString();
+  document.getElementById('colCount').textContent = DATA.columns.length;
+
+  renderVerdict();
+  renderSummary();
+  renderColumnTable();
+  renderTextFindings();
+
+  document.getElementById('exportBtn').onclick = exportSanitized;
+  document.getElementById('reportBtn').onclick = exportReport;
+}
+
+function renderVerdict(){
+  const s = DETECT.summary;
+  const wrap = document.getElementById('verdict');
+  let cls, label, title, body;
+  if(s.directCols > 0){
+    cls = 'fail'; label = 'Not de-identified';
+    title = 'This dataset contains direct identifiers.';
+    body = `Found <strong>${s.directCols}</strong> column(s) with direct PHI identifiers and <strong>${s.textHits}</strong> identifier match(es) in free-text fields. <strong>Do not paste this data into an LLM or share externally without sanitization.</strong> Use the export below to produce a screened version.`;
+  } else if(s.quasiCols > 0 || s.textHits > 0){
+    cls = 'warn'; label = 'Quasi-identifiers present';
+    title = 'No direct identifiers detected, but re-identification risk remains.';
+    body = `Found <strong>${s.quasiCols}</strong> quasi-identifier column(s) and <strong>${s.textHits}</strong> potential identifier(s) in free-text. This data may be identifiable through linkage. Review per-column actions below before treating this as de-identified.`;
+  } else {
+    cls = 'pass'; label = 'No identifiers detected';
+    title = 'No common identifiers found by pattern matching.';
+    body = `Pattern-based detection found no direct or quasi-identifiers. <strong>This is not a guarantee of de-identification under HIPAA.</strong> Manual review by a privacy officer is still recommended for any data leaving your organization.`;
+  }
+  wrap.className = 'verdict ' + cls;
+  wrap.innerHTML = `<div class="verdict-label">${label}</div><h3>${title}</h3><p>${body}</p>`;
+}
+
+function renderSummary(){
+  const s = DETECT.summary;
+  const grid = document.getElementById('summaryGrid');
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total columns</div>
+      <div class="stat-value accent">${s.totalCols}</div>
+      <div class="stat-sub">${s.totalRows.toLocaleString()} rows scanned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Direct identifiers</div>
+      <div class="stat-value ${s.directCols ? 'warn' : 'ok'}">${s.directCols}</div>
+      <div class="stat-sub">columns flagged as PHI</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Quasi-identifiers</div>
+      <div class="stat-value ${s.quasiCols ? 'accent' : 'ok'}">${s.quasiCols}</div>
+      <div class="stat-sub">columns enabling linkage</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Free-text PHI hits</div>
+      <div class="stat-value ${s.textHits ? 'warn' : 'ok'}">${s.textHits}</div>
+      <div class="stat-sub">in notes/text columns</div>
+    </div>
+  `;
+}
+
+function renderColumnTable(){
+  const tbody = document.getElementById('colTableBody');
+  tbody.innerHTML = DETECT.columns.map(c => {
+    const detectClass = c.kind;
+    const detectLabel = c.kind === 'direct' ? 'Direct PHI' :
+                        c.kind === 'quasi' ? 'Quasi-ID' :
+                        c.kind === 'text' ? 'Free text' : 'Clean';
+    const reasons = c.reasons.length ? `<div style="font-size:.7rem;color:var(--text-muted);margin-top:.3rem;font-family:var(--mono)">${c.reasons.join(' · ')}</div>` : '';
+
+    let actionOpts;
+    if(c.kind === 'direct'){
+      actionOpts = `
+        <option value="strip"${ACTIONS[c.col]==='strip'?' selected':''}>Strip column (default)</option>
+        <option value="pseudo"${ACTIONS[c.col]==='pseudo'?' selected':''}>Pseudonymize (hash)</option>
+        <option value="keep"${ACTIONS[c.col]==='keep'?' selected':''}>Keep as-is (unsafe)</option>
+      `;
+    } else if(c.kind === 'quasi'){
+      actionOpts = `
+        <option value="keep"${ACTIONS[c.col]==='keep'?' selected':''}>Keep</option>
+        <option value="generalize"${ACTIONS[c.col]==='generalize'?' selected':''}>Generalize (default)</option>
+        <option value="shift"${ACTIONS[c.col]==='shift'?' selected':''}>Date shift</option>
+        <option value="strip"${ACTIONS[c.col]==='strip'?' selected':''}>Strip column</option>
+        <option value="pseudo"${ACTIONS[c.col]==='pseudo'?' selected':''}>Pseudonymize</option>
+      `;
+    } else if(c.kind === 'text'){
+      actionOpts = `
+        <option value="redact-text"${ACTIONS[c.col]==='redact-text'?' selected':''}>Redact identifiers in text (default)</option>
+        <option value="strip"${ACTIONS[c.col]==='strip'?' selected':''}>Strip column</option>
+        <option value="keep"${ACTIONS[c.col]==='keep'?' selected':''}>Keep as-is (unsafe)</option>
+      `;
+    } else {
+      actionOpts = `
+        <option value="keep"${ACTIONS[c.col]==='keep'?' selected':''}>Keep</option>
+        <option value="strip"${ACTIONS[c.col]==='strip'?' selected':''}>Strip column</option>
+      `;
+    }
+
+    return `
+      <tr>
+        <td><div class="col-name">${escapeHtml(c.col)}</div>${reasons}</td>
+        <td><span class="col-detect ${detectClass}">${detectLabel}</span></td>
+        <td><div class="col-sample">${escapeHtml(c.sample)}</div></td>
+        <td class="col-action"><select data-col="${escapeHtml(c.col)}">${actionOpts}</select></td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', e => {
+      ACTIONS[e.target.dataset.col] = e.target.value;
+    });
+  });
+}
+
+function renderTextFindings(){
+  const wrap = document.getElementById('textFindings');
+  if(!DETECT.textFindings.length){
+    wrap.innerHTML = `<p style="color:var(--text-muted);font-size:.92rem;font-style:italic">No identifier patterns detected in free-text columns.</p>`;
+    return;
+  }
+  const grouped = {};
+  for(const f of DETECT.textFindings){
+    if(!grouped[f.col]) grouped[f.col] = [];
+    grouped[f.col].push(f);
+  }
+  wrap.innerHTML = Object.entries(grouped).map(([col, items]) => `
+    <div style="background:var(--surface);border:0.5px solid var(--rule);padding:1rem 1.25rem;margin-bottom:.75rem">
+      <div style="font-family:var(--mono);font-size:.78rem;color:var(--accent);margin-bottom:.5rem">${escapeHtml(col)}</div>
+      ${items.map(i => `<div style="font-size:.85rem;color:var(--text-muted);padding:.2rem 0">${i.label}: <strong style="color:var(--text)">${i.count}</strong> match(es)</div>`).join('')}
+    </div>
+  `).join('');
+}
+
+// ============ Sanitization ============
+
+async function hashValue(v){
+  const enc = new TextEncoder().encode('neuronramp-salt-' + String(v));
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).slice(0, 6).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+const DATE_SHIFT_DAYS = Math.floor(Math.random() * 365) - 182;
+
+function shiftDate(s){
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return s;
+  d.setDate(d.getDate() + DATE_SHIFT_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
+function generalizeValue(col, v){
+  if(/age/i.test(col)){
+    const n = parseInt(v);
+    if(isNaN(n)) return v;
+    if(n >= 90) return '90+';
+    return Math.floor(n / 10) * 10 + 's';
+  }
+  if(/zip/i.test(col)){
+    return String(v).slice(0, 3) + 'XX';
+  }
+  return v;
+}
+
+function redactText(s){
+  let out = String(s);
+  for(const p of Object.values(PATTERNS)){
+    if(p.kind === 'direct' || p.kind === 'quasi'){
+      out = out.replace(new RegExp(p.regex.source, 'g'), `[REDACTED:${p.label}]`);
+    }
+  }
+  return out;
+}
+
+async function exportSanitized(){
+  const cols = [];
+  const colMap = []; // index in original
+  for(let i = 0; i < DATA.columns.length; i++){
+    const action = ACTIONS[DATA.columns[i]];
+    if(action !== 'strip'){
+      cols.push(DATA.columns[i]);
+      colMap.push(i);
+    }
+  }
+
+  const newRows = [];
+  for(const r of DATA.rows){
+    const newRow = [];
+    for(let j = 0; j < colMap.length; j++){
+      const origIdx = colMap[j];
+      const colName = DATA.columns[origIdx];
+      const action = ACTIONS[colName];
+      const v = r[origIdx];
+      if(v == null || v === ''){
+        newRow.push('');
+        continue;
+      }
+      if(action === 'pseudo'){
+        newRow.push('px_' + await hashValue(v));
+      } else if(action === 'shift'){
+        newRow.push(shiftDate(v));
+      } else if(action === 'generalize'){
+        newRow.push(generalizeValue(colName, v));
+      } else if(action === 'redact-text'){
+        newRow.push(redactText(v));
+      } else {
+        newRow.push(v);
+      }
+    }
+    newRows.push(newRow);
+  }
+
+  const ext = DATA.sourceFormat === 'xlsx' ? 'xlsx' : 'csv';
+  const baseName = FILENAME.replace(/\.[^.]+$/, '');
+  const outName = `${baseName}_screened.${ext}`;
+
+  if(ext === 'xlsx'){
+    const ws = XLSX.utils.aoa_to_sheet([cols, ...newRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Screened');
+    XLSX.writeFile(wb, outName);
+  } else {
+    const csvLines = [cols, ...newRows].map(r => r.map(v => {
+      const s = String(v ?? '');
+      if(/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    }).join(','));
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+    download(blob, outName);
+  }
+}
+
+function exportReport(){
+  const lines = [];
+  lines.push('CLINICAL DATA QUICK READ — SCREENING REPORT');
+  lines.push('='.repeat(50));
+  lines.push('');
+  lines.push(`Source file: ${FILENAME}`);
+  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Rows: ${DATA.rows.length}`);
+  lines.push(`Columns: ${DATA.columns.length}`);
+  lines.push('');
+  lines.push('IMPORTANT: This screening is a pattern-based first pass.');
+  lines.push('It is NOT a substitute for HIPAA Expert Determination,');
+  lines.push('IRB review, or qualified privacy officer review.');
+  lines.push('');
+  lines.push('SUMMARY');
+  lines.push('-'.repeat(50));
+  lines.push(`Direct identifier columns: ${DETECT.summary.directCols}`);
+  lines.push(`Quasi-identifier columns: ${DETECT.summary.quasiCols}`);
+  lines.push(`Free-text columns: ${DETECT.summary.textCols}`);
+  lines.push(`Free-text identifier hits: ${DETECT.summary.textHits}`);
+  lines.push('');
+  lines.push('PER-COLUMN FINDINGS');
+  lines.push('-'.repeat(50));
+  for(const c of DETECT.columns){
+    lines.push(`[${c.kind.toUpperCase()}] ${c.col}`);
+    if(c.reasons.length) lines.push(`  Reasons: ${c.reasons.join('; ')}`);
+    lines.push(`  Action on export: ${ACTIONS[c.col]}`);
+    lines.push('');
+  }
+  if(DETECT.textFindings.length){
+    lines.push('FREE-TEXT FINDINGS');
+    lines.push('-'.repeat(50));
+    for(const f of DETECT.textFindings){
+      lines.push(`  ${f.col} → ${f.label}: ${f.count} match(es)`);
+    }
+    lines.push('');
+  }
+  lines.push('USE PRECAUTIONS FOR SANITIZED OUTPUT');
+  lines.push('-'.repeat(50));
+  lines.push('1. Sanitization is screening, not formal de-identification.');
+  lines.push('2. Do not share externally without IRB/DUA authorization.');
+  lines.push('3. Do not paste into LLM without BAA or HIPAA-scope confirmation.');
+  lines.push('4. Quasi-identifiers retained still pose linkage risk.');
+  lines.push('5. Small datasets with rare conditions: extra caution.');
+  lines.push('6. Have a trained privacy officer review before any release.');
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  download(blob, FILENAME.replace(/\.[^.]+$/, '') + '_screening_report.txt');
+}
+
+function download(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function reset(){
+  DATA = null; DETECT = null; ACTIONS = {}; FILENAME = '';
+  document.getElementById('results').classList.add('hidden');
+  uploadArea.classList.remove('hidden');
+  fileInput.value = '';
+}
+
+</script>
+</body>
+</html>
