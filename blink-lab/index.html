@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BlinkLab · Ocular Telemetry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    --bg-deep: #050912;
+    --bg-1: #0a1326;
+    --bg-2: #0e1a35;
+    --panel: rgba(15, 26, 51, 0.55);
+    --panel-border: rgba(86, 167, 209, 0.18);
+    --panel-border-hi: rgba(86, 200, 255, 0.45);
+    --text: #e6f1ff;
+    --text-dim: #8aa3c7;
+    --text-faint: #56708f;
+    --accent: #22d3ee;
+    --accent-hi: #67e8f9;
+    --accent-glow: rgba(34, 211, 238, 0.35);
+    --pink: #ff6b9d;
+    --pink-glow: rgba(255, 107, 157, 0.45);
+    --mint: #5eead4;
+    --amber: #fbbf24;
+    --danger: #f87171;
+    --grid: rgba(86, 167, 209, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  body {
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(255, 107, 157, 0.06), transparent 60%),
+      linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-1) 100%);
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* Decorative grid background */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 22px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 100vh;
+  }
+
+  /* ====== Top bar ====== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .brand-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(255, 107, 157, 0.18));
+    border: 1px solid var(--panel-border-hi);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.18) inset, 0 0 16px rgba(34, 211, 238, 0.12);
+    position: relative;
+  }
+  .brand-mark svg { width: 26px; height: 26px; }
+
+  .brand-text { line-height: 1.1; }
+  .brand-name {
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+  }
+  .brand-name .lab { color: var(--accent); }
+  .brand-sub {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .status-strip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .chip.live { color: var(--text); }
+  .chip .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  .chip.live .dot {
+    background: var(--pink);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  .chip.warn .dot { background: var(--amber); }
+  .chip.ok .dot { background: var(--mint); }
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 var(--pink-glow); }
+    50% { box-shadow: 0 0 0 7px transparent; }
+  }
+
+  .clock {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1.4px;
+  }
+
+  /* ====== Main grid ====== */
+  .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 960px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 35%),
+      linear-gradient(315deg, rgba(34,211,238,0.05) 0%, transparent 40%);
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--panel-border);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .panel-head .id {
+    color: var(--text-faint);
+    font-size: 10px;
+  }
+
+  /* ====== Video panel ====== */
+  .video-panel { padding: 0; }
+  .video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+  }
+  .video-wrap video,
+  .video-wrap canvas.overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .video-wrap video { transform: scaleX(-1); }
+  .video-wrap canvas.overlay { transform: scaleX(-1); }
+
+  /* Reticle/crosshair decorations */
+  .reticle {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .reticle .corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid var(--accent);
+    opacity: 0.7;
+  }
+  .reticle .corner.tl { top: 14px; left: 14px; border-right: none; border-bottom: none; border-top-left-radius: 4px; }
+  .reticle .corner.tr { top: 14px; right: 14px; border-left: none; border-bottom: none; border-top-right-radius: 4px; }
+  .reticle .corner.bl { bottom: 14px; left: 14px; border-right: none; border-top: none; border-bottom-left-radius: 4px; }
+  .reticle .corner.br { bottom: 14px; right: 14px; border-left: none; border-top: none; border-bottom-right-radius: 4px; }
+  .reticle .scanline {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.35;
+    animation: scan 4.6s linear infinite;
+  }
+  @keyframes scan {
+    0% { top: 8%; }
+    50% { top: 92%; }
+    100% { top: 8%; }
+  }
+
+  .video-meta {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--text);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    pointer-events: none;
+    z-index: 6;
+  }
+  .video-meta .left, .video-meta .right { display: flex; gap: 14px; }
+  .video-meta span b { color: var(--accent-hi); font-weight: 500; }
+
+  /* ====== Pre-init overlay ====== */
+  .preinit {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(10, 19, 38, 0.85), rgba(5, 9, 18, 0.95));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 10;
+    transition: opacity 0.4s ease;
+  }
+  .preinit.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .preinit-card {
+    text-align: center;
+    padding: 28px 32px;
+    max-width: 420px;
+  }
+  .preinit-eye {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, var(--accent-hi) 0%, var(--accent) 25%, rgba(34,211,238,0.2) 60%, transparent 75%);
+    box-shadow: 0 0 40px var(--accent-glow);
+    position: relative;
+    animation: eye-blink 4s ease-in-out infinite;
+  }
+  .preinit-eye::after {
+    content: "";
+    position: absolute;
+    inset: 18px;
+    border-radius: 50%;
+    background: var(--bg-deep);
+  }
+  @keyframes eye-blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95%, 97% { transform: scaleY(0.05); }
+  }
+  .preinit-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    letter-spacing: 0.3px;
+  }
+  .preinit-desc {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    margin: 0 0 22px;
+  }
+  .preinit-desc code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    background: rgba(34, 211, 238, 0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent-hi);
+  }
+
+  .btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--panel-border-hi);
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.18), rgba(34, 211, 238, 0.05));
+    color: var(--text);
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0.4px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: 0 0 0 0 transparent, 0 6px 22px rgba(0,0,0,0.25);
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.28), rgba(34, 211, 238, 0.08));
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.25), 0 6px 22px rgba(0,0,0,0.3);
+  }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn.secondary {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--panel-border);
+  }
+  .btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* ====== Stats column ====== */
+  .stats-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .stat-card { padding: 18px 20px; }
+  .stat-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.8px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .stat-label .unit { color: var(--text-faint); }
+  .stat-value {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    transition: text-shadow 0.4s ease, color 0.4s ease;
+  }
+  .stat-value.big { font-size: 64px; letter-spacing: -2px; }
+  .stat-value.mid { font-size: 32px; letter-spacing: -0.5px; }
+  .stat-value.flash {
+    color: var(--pink);
+    text-shadow: 0 0 24px var(--pink-glow);
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .eye-state {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .eye-indicator {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+    display: grid;
+    place-items: center;
+    background: rgba(0,0,0,0.25);
+    flex-shrink: 0;
+  }
+  .eye-indicator svg { width: 24px; height: 24px; transition: transform 0.15s ease; }
+  .eye-indicator.closed svg { transform: scaleY(0.1); }
+  .eye-state-text { flex: 1; min-width: 0; }
+  .eye-state-text .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+  .eye-state-text .val {
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 2px;
+    color: var(--text);
+  }
+  .eye-state-text .val.down { color: var(--mint); }
+  .eye-state-text .val.closed { color: var(--pink); }
+  .eye-state-text .val.away { color: var(--amber); }
+
+  /* ====== Signal panel ====== */
+  .signal-panel { padding: 0; }
+  .signal-canvas {
+    width: 100%;
+    height: 160px;
+    display: block;
+  }
+
+  /* ====== Footer ====== */
+  .footer {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+  }
+  .controls { display: flex; gap: 10px; }
+
+  .log {
+    position: relative;
+    overflow: hidden;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    height: 44px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+  }
+  .log-prefix {
+    flex-shrink: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.5px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-right: 14px;
+    padding-right: 14px;
+    border-right: 1px solid var(--panel-border);
+  }
+  .log-stream {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+  .log-entry {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    animation: slide-in 0.25s ease;
+  }
+  .log-entry .t { color: var(--accent); margin-right: 10px; }
+  .log-entry.blink { color: var(--text); }
+  .log-entry.blink .t { color: var(--pink); }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .settings {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 8px 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .settings label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.4px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+  .settings input[type="range"] {
+    -webkit-appearance: none;
+    width: 110px;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), rgba(34,211,238,0.15));
+    outline: none;
+  }
+  .settings input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent-hi);
+    box-shadow: 0 0 8px var(--accent-glow);
+    cursor: pointer;
+  }
+  .settings input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent-hi);
+    box-shadow: 0 0 8px var(--accent-glow);
+    cursor: pointer;
+    border: none;
+  }
+  .settings .threshold-val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--accent-hi);
+    width: 36px;
+    text-align: right;
+  }
+
+  /* ====== Toast / error ====== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: var(--text);
+    font-size: 13.5px;
+    max-width: 320px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .toast.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+  }
+  .toast .toast-title {
+    font-weight: 600;
+    color: var(--danger);
+    margin-bottom: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+
+  /* tiny helper */
+  .row { display: flex; gap: 12px; align-items: center; }
+
+  /* Footer credit */
+  .credit {
+    text-align: center;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    padding: 6px 0;
+  }
+  .credit .blip {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin: 0 8px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px var(--accent-glow);
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-hi)">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3.2" />
+            <circle cx="12" cy="12" r="1" fill="currentColor" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">Blink<span class="lab">Lab</span></div>
+          <div class="brand-sub">Ocular Telemetry · v1.0</div>
+        </div>
+      </div>
+
+      <div class="status-strip">
+        <div id="statusChip" class="chip"><span class="dot"></span><span id="statusText">Standby</span></div>
+        <div id="clock" class="clock">--:--:--</div>
+      </div>
+    </header>
+
+    <!-- Main: video + stats -->
+    <section class="main">
+      <!-- Video panel -->
+      <div class="panel video-panel">
+        <div class="panel-head">
+          <span>· Subject Feed</span>
+          <span class="id">CH-01 / FRONT</span>
+        </div>
+        <div class="video-wrap">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="overlay" class="overlay"></canvas>
+
+          <div class="reticle" aria-hidden="true">
+            <span class="corner tl"></span>
+            <span class="corner tr"></span>
+            <span class="corner bl"></span>
+            <span class="corner br"></span>
+            <span class="scanline"></span>
+          </div>
+
+          <div class="video-meta" aria-hidden="true">
+            <div class="left">
+              <span>FPS <b id="fpsVal">--</b></span>
+              <span>LAT <b id="latVal">-- ms</b></span>
+            </div>
+            <div class="right">
+              <span>LMK <b id="lmkVal">478</b></span>
+              <span>SUBJ <b id="subjVal">--</b></span>
+            </div>
+          </div>
+
+          <!-- Pre-init overlay -->
+          <div id="preinit" class="preinit">
+            <div class="preinit-card">
+              <div class="preinit-eye" aria-hidden="true"></div>
+              <h2 class="preinit-title">Ocular Telemetry Console</h2>
+              <p class="preinit-desc">
+                BlinkLab tallies spontaneous eye-blink events in real time using on-device
+                facial landmark inference. Press <code>Initialize</code> to grant
+                webcam access — frames never leave this machine.
+              </p>
+              <button id="initBtn" class="btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+                Initialize camera
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats column -->
+      <div class="stats-col">
+        <div class="panel stat-card">
+          <div class="stat-label">
+            <span>Blink Count</span>
+            <span class="unit">events</span>
+          </div>
+          <div id="blinkCount" class="stat-value big">0</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="panel stat-card">
+            <div class="stat-label"><span>Rate</span><span class="unit">/min</span></div>
+            <div id="blinkRate" class="stat-value mid">0.0</div>
+          </div>
+          <div class="panel stat-card">
+            <div class="stat-label"><span>Session</span><span class="unit">m:s</span></div>
+            <div id="sessionTime" class="stat-value mid">0:00</div>
+          </div>
+        </div>
+
+        <div class="panel eye-state">
+          <div id="eyeIndicator" class="eye-indicator" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-hi)">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </div>
+          <div class="eye-state-text">
+            <div class="label">Subject State</div>
+            <div id="eyeStateVal" class="val">Awaiting subject</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Signal trace -->
+    <div class="panel signal-panel">
+      <div class="panel-head">
+        <span>· Eye Aperture Waveform</span>
+        <span class="id">EAR · BLINK BLENDSHAPE · 10s</span>
+      </div>
+      <canvas id="signal" class="signal-canvas" width="1200" height="160"></canvas>
+    </div>
+
+    <!-- Footer controls -->
+    <div class="footer">
+      <div class="controls">
+        <button id="resetBtn" class="btn secondary" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15A9 9 0 11 5.64 5.64L23 10" />
+          </svg>
+          Reset
+        </button>
+      </div>
+      <div class="log" aria-live="polite">
+        <span class="log-prefix">· Event Log</span>
+        <div id="logStream" class="log-stream">
+          <span class="log-entry"><span class="t">--:--:--</span> Awaiting initialization …</span>
+        </div>
+      </div>
+      <div class="settings">
+        <label for="threshold">Sensitivity</label>
+        <input id="threshold" type="range" min="0.25" max="0.70" step="0.01" value="0.50" />
+        <span id="thresholdVal" class="threshold-val">0.50</span>
+      </div>
+    </div>
+
+    <div class="credit">
+      ON-DEVICE INFERENCE <span class="blip"></span> NO DATA TRANSMITTED <span class="blip"></span> RESEARCH PROTOTYPE
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden">
+    <div class="toast-title">Notice</div>
+    <div id="toastMsg">—</div>
+  </div>
+
+<script type="module">
+import {
+  FaceLandmarker,
+  FilesetResolver,
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+// ---------------- DOM ----------------
+const video           = document.getElementById("video");
+const overlay         = document.getElementById("overlay");
+const ctx             = overlay.getContext("2d");
+const signalCanvas    = document.getElementById("signal");
+const sctx            = signalCanvas.getContext("2d");
+const preinit         = document.getElementById("preinit");
+const initBtn         = document.getElementById("initBtn");
+const resetBtn        = document.getElementById("resetBtn");
+const blinkCountEl    = document.getElementById("blinkCount");
+const blinkRateEl     = document.getElementById("blinkRate");
+const sessionTimeEl   = document.getElementById("sessionTime");
+const statusChip      = document.getElementById("statusChip");
+const statusText      = document.getElementById("statusText");
+const clockEl         = document.getElementById("clock");
+const fpsVal          = document.getElementById("fpsVal");
+const latVal          = document.getElementById("latVal");
+const subjVal         = document.getElementById("subjVal");
+const eyeIndicator    = document.getElementById("eyeIndicator");
+const eyeStateVal     = document.getElementById("eyeStateVal");
+const logStream       = document.getElementById("logStream");
+const thresholdEl     = document.getElementById("threshold");
+const thresholdValEl  = document.getElementById("thresholdVal");
+const toast           = document.getElementById("toast");
+const toastMsg        = document.getElementById("toastMsg");
+
+// ---------------- State ----------------
+let faceLandmarker = null;
+let stream = null;
+let running = false;
+let sessionStart = 0;
+let lastVideoTime = -1;
+let lastDetectMs = 0;
+let blinkCount = 0;
+let blinkTimestamps = [];
+let signal = [];   // { t, blink, lookDown }
+let blinkMarkers = []; // timestamps of accepted blinks for chart
+
+// Blink state machine
+let phase = "OPEN";          // "OPEN" | "CLOSING"
+let phaseStartTime = 0;
+let peakBlinkInPhase = 0;
+let peakLookDownInPhase = 0;
+
+// FPS tracking
+let fpsLast = performance.now();
+let fpsFrames = 0;
+let fpsValue = 0;
+
+// Tunables
+let BLINK_HI = 0.50;
+let BLINK_LO = 0.32;
+const MIN_BLINK_MS = 60;
+const MAX_BLINK_MS = 500;
+const LOOKDOWN_REJECT = 0.55;   // reject if peak look-down during phase exceeds this
+const HISTORY_MS = 10000;
+
+// Eye landmark connectors (approximate eye contour indices for MediaPipe Face Mesh)
+const RIGHT_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246, 33];
+const LEFT_EYE  = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466, 263];
+
+// ---------------- Helpers ----------------
+function fmtClock(d = new Date()) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function fmtMs(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+}
+function setStatus(state, msg) {
+  statusChip.className = "chip " + state;
+  statusText.textContent = msg;
+}
+function showToast(msg) {
+  toastMsg.textContent = msg;
+  toast.classList.remove("hidden");
+  setTimeout(() => toast.classList.add("hidden"), 5500);
+}
+function log(msg, type = "") {
+  const entry = document.createElement("span");
+  entry.className = "log-entry " + type;
+  entry.innerHTML = `<span class="t">${fmtClock()}</span>${msg}`;
+  logStream.replaceChildren(entry);
+}
+
+// ---------------- Init flow ----------------
+async function ensureMediaPipe() {
+  if (faceLandmarker) return;
+  setStatus("warn", "Loading vision model");
+  log("Loading face-landmark model …");
+  const filesetResolver = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      delegate: "GPU",
+    },
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: false,
+    runningMode: "VIDEO",
+    numFaces: 1,
+  });
+}
+
+async function start() {
+  initBtn.disabled = true;
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("getUserMedia is not supported in this browser.");
+    }
+    setStatus("warn", "Requesting camera");
+    log("Requesting webcam access …");
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await new Promise(res => video.onloadedmetadata = res);
+    await video.play();
+
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+
+    await ensureMediaPipe();
+
+    sessionStart = performance.now();
+    running = true;
+    resetBtn.disabled = false;
+    preinit.classList.add("hidden");
+    setStatus("live", "Live");
+    log("Telemetry online — counting begins.");
+
+    requestAnimationFrame(loop);
+  } catch (err) {
+    console.error(err);
+    setStatus("", "Standby");
+    initBtn.disabled = false;
+    if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+      showToast("Camera permission was denied. Re-allow access in browser settings to continue.");
+      log("Permission denied.");
+    } else if (err?.name === "NotFoundError") {
+      showToast("No camera device was found on this system.");
+      log("No camera found.");
+    } else {
+      showToast(err?.message || "Unable to initialize camera.");
+      log("Initialization failed.");
+    }
+  }
+}
+
+initBtn.addEventListener("click", start);
+
+resetBtn.addEventListener("click", () => {
+  blinkCount = 0;
+  blinkTimestamps = [];
+  blinkMarkers = [];
+  sessionStart = performance.now();
+  blinkCountEl.textContent = "0";
+  blinkRateEl.textContent = "0.0";
+  log("Counters cleared.");
+});
+
+thresholdEl.addEventListener("input", () => {
+  BLINK_HI = parseFloat(thresholdEl.value);
+  BLINK_LO = Math.max(0.20, BLINK_HI - 0.18);
+  thresholdValEl.textContent = BLINK_HI.toFixed(2);
+});
+
+// ---------------- Main loop ----------------
+function loop() {
+  if (!running) return;
+
+  const now = performance.now();
+
+  // FPS counter
+  fpsFrames++;
+  if (now - fpsLast > 500) {
+    fpsValue = (fpsFrames * 1000) / (now - fpsLast);
+    fpsFrames = 0;
+    fpsLast = now;
+    fpsVal.textContent = fpsValue.toFixed(0);
+  }
+
+  if (video.currentTime !== lastVideoTime && faceLandmarker) {
+    lastVideoTime = video.currentTime;
+    const detectStart = performance.now();
+    let results = null;
+    try {
+      results = faceLandmarker.detectForVideo(video, now);
+    } catch (e) {
+      console.warn("detect error", e);
+    }
+    lastDetectMs = performance.now() - detectStart;
+    latVal.textContent = `${lastDetectMs.toFixed(0)} ms`;
+
+    processResults(results, now);
+  }
+
+  // UI: session timer
+  sessionTimeEl.textContent = fmtMs(now - sessionStart);
+
+  // Blink rate (last 60s if elapsed, otherwise extrapolated from elapsed)
+  const elapsedMs = now - sessionStart;
+  let rate = 0;
+  if (elapsedMs > 5000) {
+    const recent = blinkTimestamps.filter(t => now - t < 60000);
+    if (elapsedMs < 60000) {
+      rate = (blinkCount * 60000) / Math.max(elapsedMs, 1);
+    } else {
+      rate = recent.length;
+    }
+  }
+  blinkRateEl.textContent = rate.toFixed(1);
+
+  drawSignal(now);
+
+  requestAnimationFrame(loop);
+}
+
+function processResults(results, now) {
+  // Clear overlay
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  if (!results || !results.faceLandmarks || results.faceLandmarks.length === 0) {
+    subjVal.textContent = "NONE";
+    eyeStateVal.textContent = "No subject in frame";
+    eyeStateVal.className = "val away";
+    eyeIndicator.classList.remove("closed");
+    // Still push neutral signal so trace scrolls
+    pushSignal(now, 0, 0);
+    return;
+  }
+
+  subjVal.textContent = "S-01";
+  const landmarks = results.faceLandmarks[0];
+  const blendshapes = results.faceBlendshapes?.[0]?.categories || [];
+
+  let blinkL = 0, blinkR = 0;
+  let lookDownL = 0, lookDownR = 0;
+  for (const c of blendshapes) {
+    switch (c.categoryName) {
+      case "eyeBlinkLeft":     blinkL = c.score; break;
+      case "eyeBlinkRight":    blinkR = c.score; break;
+      case "eyeLookDownLeft":  lookDownL = c.score; break;
+      case "eyeLookDownRight": lookDownR = c.score; break;
+    }
+  }
+  const blink = (blinkL + blinkR) / 2;
+  const lookDown = (lookDownL + lookDownR) / 2;
+
+  pushSignal(now, blink, lookDown);
+
+  // Eye state label
+  if (blink > BLINK_HI) {
+    eyeStateVal.textContent = lookDown > LOOKDOWN_REJECT ? "Eyes lowered" : "Eyes closed";
+    eyeStateVal.className = lookDown > LOOKDOWN_REJECT ? "val down" : "val closed";
+    eyeIndicator.classList.add("closed");
+  } else if (lookDown > 0.55) {
+    eyeStateVal.textContent = "Gaze · downward";
+    eyeStateVal.className = "val down";
+    eyeIndicator.classList.remove("closed");
+  } else {
+    eyeStateVal.textContent = "Eyes open · tracking";
+    eyeStateVal.className = "val";
+    eyeIndicator.classList.remove("closed");
+  }
+
+  // Blink state machine
+  if (phase === "OPEN") {
+    if (blink > BLINK_HI) {
+      phase = "CLOSING";
+      phaseStartTime = now;
+      peakBlinkInPhase = blink;
+      peakLookDownInPhase = lookDown;
+    }
+  } else if (phase === "CLOSING") {
+    peakBlinkInPhase = Math.max(peakBlinkInPhase, blink);
+    peakLookDownInPhase = Math.max(peakLookDownInPhase, lookDown);
+    if (blink < BLINK_LO) {
+      const dur = now - phaseStartTime;
+      phase = "OPEN";
+      const validDuration  = dur >= MIN_BLINK_MS && dur <= MAX_BLINK_MS;
+      const notLookingDown = peakLookDownInPhase < LOOKDOWN_REJECT;
+      if (validDuration && notLookingDown) {
+        registerBlink(now, dur);
+      } else if (!notLookingDown) {
+        log(`Suppressed eye-closure · subject looking down (${(peakLookDownInPhase*100).toFixed(0)}%)`);
+      }
+    } else if (now - phaseStartTime > MAX_BLINK_MS * 3) {
+      // Stuck-closed: forcibly release (sustained eye-closure isn't a blink)
+      phase = "OPEN";
+      log("Sustained eye-closure — not classified as blink.");
+    }
+  }
+
+  // Draw face mesh overlay
+  drawMesh(landmarks);
+}
+
+function registerBlink(now, durationMs) {
+  blinkCount += 1;
+  blinkTimestamps.push(now);
+  blinkMarkers.push(now);
+  blinkCountEl.textContent = String(blinkCount);
+  blinkCountEl.classList.add("flash");
+  setTimeout(() => blinkCountEl.classList.remove("flash"), 320);
+
+  const tags = [
+    "Blink recorded",
+    "Ocular event registered",
+    "Reflex captured",
+    "Telemetry update",
+  ];
+  const tag = tags[blinkCount % tags.length];
+  log(`<b>${tag}</b> · #${blinkCount} · Δt = ${durationMs.toFixed(0)} ms`, "blink");
+}
+
+function pushSignal(now, blink, lookDown) {
+  signal.push({ t: now, blink, lookDown });
+  // trim
+  while (signal.length && now - signal[0].t > HISTORY_MS + 1000) {
+    signal.shift();
+  }
+  while (blinkMarkers.length && now - blinkMarkers[0] > HISTORY_MS + 1000) {
+    blinkMarkers.shift();
+  }
+}
+
+// ---------------- Drawing ----------------
+function drawMesh(landmarks) {
+  const w = overlay.width, h = overlay.height;
+
+  // Faint face dots
+  ctx.fillStyle = "rgba(34, 211, 238, 0.22)";
+  for (let i = 0; i < landmarks.length; i++) {
+    const p = landmarks[i];
+    ctx.fillRect(p.x * w - 0.5, p.y * h - 0.5, 1.4, 1.4);
+  }
+
+  // Eye contours (brighter)
+  drawPolyline(landmarks, RIGHT_EYE, w, h, "rgba(103, 232, 249, 0.9)", 1.8);
+  drawPolyline(landmarks, LEFT_EYE,  w, h, "rgba(103, 232, 249, 0.9)", 1.8);
+
+  // Optional glow when blinking
+  if (phase === "CLOSING") {
+    ctx.save();
+    ctx.shadowColor = "rgba(255, 107, 157, 0.9)";
+    ctx.shadowBlur = 16;
+    drawPolyline(landmarks, RIGHT_EYE, w, h, "rgba(255, 107, 157, 0.95)", 2.2);
+    drawPolyline(landmarks, LEFT_EYE,  w, h, "rgba(255, 107, 157, 0.95)", 2.2);
+    ctx.restore();
+  }
+}
+
+function drawPolyline(landmarks, indices, w, h, stroke, lw) {
+  ctx.beginPath();
+  for (let i = 0; i < indices.length; i++) {
+    const p = landmarks[indices[i]];
+    const x = p.x * w, y = p.y * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = stroke;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke();
+}
+
+function drawSignal(now) {
+  const w = signalCanvas.width;
+  const h = signalCanvas.height;
+
+  sctx.clearRect(0, 0, w, h);
+
+  // Background gradient
+  const grad = sctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, "rgba(15, 26, 51, 0.0)");
+  grad.addColorStop(1, "rgba(34, 211, 238, 0.04)");
+  sctx.fillStyle = grad;
+  sctx.fillRect(0, 0, w, h);
+
+  // Grid
+  sctx.strokeStyle = "rgba(86, 167, 209, 0.10)";
+  sctx.lineWidth = 1;
+  sctx.beginPath();
+  for (let i = 1; i < 5; i++) {
+    const y = (i / 5) * h;
+    sctx.moveTo(0, y); sctx.lineTo(w, y);
+  }
+  for (let i = 1; i < 10; i++) {
+    const x = (i / 10) * w;
+    sctx.moveTo(x, 0); sctx.lineTo(x, h);
+  }
+  sctx.stroke();
+
+  // Threshold line
+  const threshY = h - BLINK_HI * h;
+  sctx.strokeStyle = "rgba(255, 107, 157, 0.45)";
+  sctx.setLineDash([6, 6]);
+  sctx.beginPath();
+  sctx.moveTo(0, threshY); sctx.lineTo(w, threshY);
+  sctx.stroke();
+  sctx.setLineDash([]);
+
+  sctx.font = "10px JetBrains Mono, monospace";
+  sctx.fillStyle = "rgba(255, 107, 157, 0.6)";
+  sctx.fillText(`BLINK > ${BLINK_HI.toFixed(2)}`, 8, Math.max(12, threshY - 6));
+
+  // Look-down ribbon
+  sctx.fillStyle = "rgba(94, 234, 212, 0.06)";
+  sctx.beginPath();
+  let firstLD = true;
+  for (const p of signal) {
+    const age = now - p.t;
+    if (age > HISTORY_MS) continue;
+    const x = w - (age / HISTORY_MS) * w;
+    const y = h - p.lookDown * h;
+    if (firstLD) { sctx.moveTo(x, h); firstLD = false; }
+    sctx.lineTo(x, y);
+  }
+  sctx.lineTo(0, h);
+  sctx.closePath();
+  sctx.fill();
+
+  // Look-down outline
+  sctx.strokeStyle = "rgba(94, 234, 212, 0.45)";
+  sctx.lineWidth = 1;
+  sctx.beginPath();
+  let firstLDO = true;
+  for (const p of signal) {
+    const age = now - p.t;
+    if (age > HISTORY_MS) continue;
+    const x = w - (age / HISTORY_MS) * w;
+    const y = h - p.lookDown * h;
+    if (firstLDO) { sctx.moveTo(x, y); firstLDO = false; }
+    else sctx.lineTo(x, y);
+  }
+  sctx.stroke();
+
+  // Blink signal (primary)
+  sctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+  sctx.lineWidth = 2;
+  sctx.shadowColor = "rgba(34, 211, 238, 0.6)";
+  sctx.shadowBlur = 6;
+  sctx.beginPath();
+  let first = true;
+  for (const p of signal) {
+    const age = now - p.t;
+    if (age > HISTORY_MS) continue;
+    const x = w - (age / HISTORY_MS) * w;
+    const y = h - p.blink * h;
+    if (first) { sctx.moveTo(x, y); first = false; }
+    else sctx.lineTo(x, y);
+  }
+  sctx.stroke();
+  sctx.shadowBlur = 0;
+
+  // Blink markers
+  for (const t of blinkMarkers) {
+    const age = now - t;
+    if (age > HISTORY_MS) continue;
+    const x = w - (age / HISTORY_MS) * w;
+    sctx.strokeStyle = "rgba(255, 107, 157, 0.6)";
+    sctx.lineWidth = 1.2;
+    sctx.setLineDash([3, 3]);
+    sctx.beginPath();
+    sctx.moveTo(x, 0); sctx.lineTo(x, h);
+    sctx.stroke();
+    sctx.setLineDash([]);
+
+    sctx.fillStyle = "#ff6b9d";
+    sctx.shadowColor = "rgba(255, 107, 157, 0.8)";
+    sctx.shadowBlur = 8;
+    sctx.beginPath();
+    sctx.arc(x, 14, 3.5, 0, Math.PI * 2);
+    sctx.fill();
+    sctx.shadowBlur = 0;
+  }
+
+  // Legend
+  sctx.font = "10px JetBrains Mono, monospace";
+  sctx.fillStyle = "rgba(34, 211, 238, 0.9)";
+  sctx.fillText("● BLINK", w - 156, 16);
+  sctx.fillStyle = "rgba(94, 234, 212, 0.9)";
+  sctx.fillText("● LOOK-DOWN", w - 92, 16);
+}
+
+// Make signal canvas crisp
+function resizeSignal() {
+  const r = signalCanvas.getBoundingClientRect();
+  signalCanvas.width = Math.floor(r.width * window.devicePixelRatio);
+  signalCanvas.height = Math.floor(r.height * window.devicePixelRatio);
+  sctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  signalCanvas.width = Math.floor(r.width);
+  signalCanvas.height = Math.floor(r.height);
+}
+window.addEventListener("resize", resizeSignal);
+
+// Clock tick
+setInterval(() => { clockEl.textContent = fmtClock(); }, 1000);
+clockEl.textContent = fmtClock();
+resizeSignal();
+</script>
+</body>
+</html>
